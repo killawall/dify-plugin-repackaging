@@ -1,0 +1,34 @@
+name: Build Offline Plugin
+on:
+  push:
+    branches: [ main ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout plugin source
+        uses: actions/checkout@v4
+
+      # 官方打包，生成原始difypkg
+      - name: Build raw package
+        id: build_raw
+        uses: langgenius/dify-plugin-action@main
+
+      # 拉取这个重打包仓库（B仓库）
+      - name: Clone repack script repo
+        run: git clone https://github.com/killawall/dify-plugin-repackaging.git repack
+
+      # 复制包，执行离线重打包
+      - name: Run repack
+        run: |
+          cd repack
+          cp ${{ steps.build_raw.outputs.package-path }} ./
+          chmod +x plugin_repackaging.sh
+          ./plugin_repackaging.sh local ./*.difypkg
+
+      # 输出离线包
+      - name: Upload offline artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-plugin
+          path: repack/*_offline.difypkg
